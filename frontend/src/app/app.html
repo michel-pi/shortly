@@ -1,0 +1,58 @@
+@if (auth.user$ | async; as user) {
+<!-- Private shell (only when logged in) -->
+<mat-sidenav-container class="app-shell">
+  <mat-sidenav mode="side" opened class="app-sidenav">
+    <div class="brand">
+      <a routerLink="/">Shortly Admin</a>
+    </div>
+
+    <mat-nav-list>
+      <a
+        mat-list-item
+        routerLink="/"
+        [routerLinkActiveOptions]="{ exact: true }"
+        routerLinkActive="active"
+      >
+        <mat-icon matListItemIcon>dashboard</mat-icon>
+        <span matListItemTitle>Dashboard</span>
+      </a>
+
+      <a mat-list-item routerLink="/links" routerLinkActive="active">
+        <mat-icon matListItemIcon>link</mat-icon>
+        <span matListItemTitle>Short Links</span>
+      </a>
+
+      <a mat-list-item routerLink="/access-keys" routerLinkActive="active">
+        <mat-icon matListItemIcon>vpn_key</mat-icon>
+        <span matListItemTitle>Access Keys</span>
+      </a>
+
+      <a mat-list-item routerLink="/user" routerLinkActive="active">
+        <mat-icon matListItemIcon>person</mat-icon>
+        <span matListItemTitle>User</span>
+      </a>
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <mat-toolbar color="primary" class="app-toolbar">
+      <span class="toolbar-title">Shortly</span>
+      <span class="spacer"></span>
+
+      <button mat-button (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        Logout
+      </button>
+    </mat-toolbar>
+
+    <main class="app-main">
+      <router-outlet></router-outlet>
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>
+} @else {
+<!-- Public shell (no sidebar/toolbar) -->
+<main class="public-main">
+  <router-outlet></router-outlet>
+</main>
+}

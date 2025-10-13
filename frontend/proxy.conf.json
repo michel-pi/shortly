@@ -1,0 +1,14 @@
+{
+    "/api": {
+        "target": "https://localhost:7090/",
+        "secure": false,
+        "changeOrigin": true,
+        "logLevel": "debug"
+    },
+    "/r": {
+        "target": "https://localhost:7090/",
+        "secure": false,
+        "changeOrigin": true,
+        "logLevel": "debug"
+    }
+}

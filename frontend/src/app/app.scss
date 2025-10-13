@@ -1,0 +1,49 @@
+.app-shell {
+    height: 100vh;
+}
+
+.app-sidenav {
+    width: 240px;
+}
+
+.brand {
+    font-weight: 600;
+    padding: 16px;
+}
+
+.brand a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.app-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.toolbar-title {
+    font-weight: 600;
+}
+
+.spacer {
+    flex: 1;
+}
+
+.app-main {
+    padding: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+mat-nav-list a.active {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+mat-nav-list a mat-icon {
+    margin-right: 12px;
+}
+
+mat-nav-list a[mat-list-item] mat-icon[matListItemIcon] {
+    margin-right: 12px;
+}
