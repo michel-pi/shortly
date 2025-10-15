@@ -1,5 +1,6 @@
 using System;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
@@ -43,7 +44,9 @@ public class AuthController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("login")]
-    public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
+    public async Task<ActionResult<LoginResponse>> Login(
+        [FromBody] LoginRequest request,
+        CancellationToken ct = default)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
 
@@ -62,7 +65,7 @@ public class AuthController : ControllerBase
         var roles = await _userManager.GetRolesAsync(user);
 
         var jwt = _jwtTokenService.CreateAccessToken(user, roles);
-        var (refreshToken, expires) = await _refreshTokenService.IssueAsync(user);
+        var (refreshToken, expires) = await _refreshTokenService.IssueAsync(user, ct);
 
         SetRefreshTokenCookie(refreshToken, expires);
 
@@ -75,20 +78,20 @@ public class AuthController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("refresh")]
-    public async Task<ActionResult<LoginResponse>> Refresh()
+    public async Task<ActionResult<LoginResponse>> Refresh(CancellationToken ct = default)
     {
         if (!TryGetRefreshTokenCookie(out var tokenValue))
         {
             return Unauthorized();
         }
 
-        var refreshToken = await _refreshTokenService.GetRefreshTokenAsync(tokenValue);
+        var refreshToken = await _refreshTokenService.GetRefreshTokenAsync(tokenValue, ct);
         var user = refreshToken.AppUserNavigation!;
         var roles = await _userManager.GetRolesAsync(user);
 
         var jwt = _jwtTokenService.CreateAccessToken(user, roles);
 
-        var (newRefreshToken, newExpirationDate) = await _refreshTokenService.RotateAsync(tokenValue);
+        var (newRefreshToken, newExpirationDate) = await _refreshTokenService.RotateAsync(tokenValue, ct);
 
         SetRefreshTokenCookie(newRefreshToken, newExpirationDate);
 
@@ -101,11 +104,11 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpPost("logout")]
-    public async Task<IActionResult> Logout()
+    public async Task<IActionResult> Logout(CancellationToken ct = default)
     {
         if (TryGetRefreshTokenCookie(out var refreshToken))
         {
-            await _refreshTokenService.RevokeAsync(refreshToken);
+            await _refreshTokenService.RevokeAsync(refreshToken, ct);
         }
 
         RemoveRefreshTokenCookie();
@@ -115,11 +118,11 @@ public class AuthController : ControllerBase
 
     [Authorize]
     [HttpPost("logout-all")]
-    public async Task<IActionResult> LogoutAll()
+    public async Task<IActionResult> LogoutAll(CancellationToken ct = default)
     {
         if (long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
-            await _refreshTokenService.RevokeAllAsync(userId);
+            await _refreshTokenService.RevokeAllAsync(userId, ct);
         }
 
         RemoveRefreshTokenCookie();

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +28,7 @@ public class RefreshTokenService : IRefreshTokenService
         _refreshTokenDays = jwtOptions.Value.RefreshTokenDays;
     }
 
-    public async Task<(Guid, DateTimeOffset)> IssueAsync(AppUser user)
+    public async Task<(Guid, DateTimeOffset)> IssueAsync(AppUser user, CancellationToken ct = default)
     {
         var now = DateTimeOffset.UtcNow;
         var token = Guid.NewGuid();
@@ -44,18 +45,18 @@ public class RefreshTokenService : IRefreshTokenService
 
         _db.RefreshTokens.Add(rt);
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
 
         return (token, rt.ExpiresAt);
     }
 
-    public async Task<(Guid, DateTimeOffset)> RotateAsync(Guid token)
+    public async Task<(Guid, DateTimeOffset)> RotateAsync(Guid token, CancellationToken ct = default)
     {
         var now = DateTimeOffset.UtcNow;
         var tokenHash = HashProvider.Sha256HexString(token.ToString());
 
         var currentRt = await _db.RefreshTokens
-            .FirstOrDefaultAsync(x => x.TokenHash == tokenHash);
+            .FirstOrDefaultAsync(x => x.TokenHash == tokenHash, cancellationToken: ct);
 
         if (currentRt == null || currentRt.RevokedAt != null || currentRt.ExpiresAt <= now)
         {
@@ -65,7 +66,7 @@ public class RefreshTokenService : IRefreshTokenService
         // reused
         if (currentRt.ReplacedByRefreshTokenId != null)
         {
-            await RevokeAllAsync(currentRt.AppUserId);
+            await RevokeAllAsync(currentRt.AppUserId, ct);
 
             throw new UnauthorizedAccessException("Refresh token reused.");
         }
@@ -85,21 +86,21 @@ public class RefreshTokenService : IRefreshTokenService
         _db.RefreshTokens.Add(nextRt);
         currentRt.RevokedAt = now;
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
 
         currentRt.ReplacedByRefreshTokenId = nextRt.Id;
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
 
         return (nextToken, nextRt.ExpiresAt);
     }
 
-    public async Task RevokeAsync(Guid token)
+    public async Task RevokeAsync(Guid token, CancellationToken ct = default)
     {
         var tokenHash = HashProvider.Sha256HexString(token.ToString());
 
         var currentRt = await _db.RefreshTokens
-            .FirstOrDefaultAsync(x => x.TokenHash == tokenHash);
+            .FirstOrDefaultAsync(x => x.TokenHash == tokenHash, cancellationToken: ct);
 
         if (currentRt == null)
         {
@@ -108,26 +109,26 @@ public class RefreshTokenService : IRefreshTokenService
 
         currentRt.RevokedAt = DateTimeOffset.UtcNow;
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
     }
 
-    public async Task RevokeAllAsync(long userId)
+    public async Task RevokeAllAsync(long userId, CancellationToken ct = default)
     {
         var now = DateTimeOffset.UtcNow;
 
         await _db.RefreshTokens
             .Where(x => x.AppUserId == userId && x.RevokedAt == null)
-            .ExecuteUpdateAsync(x => x.SetProperty(rt => rt.RevokedAt, now));
+            .ExecuteUpdateAsync(x => x.SetProperty(rt => rt.RevokedAt, now), cancellationToken: ct);
     }
 
-    public async Task<RefreshToken> GetRefreshTokenAsync(Guid token)
+    public async Task<RefreshToken> GetRefreshTokenAsync(Guid token, CancellationToken ct = default)
     {
         var tokenHash = HashProvider.Sha256HexString(token.ToString());
 
         var rt = await _db.RefreshTokens
             .AsNoTracking()
             .Include(x => x.AppUserNavigation)
-            .FirstOrDefaultAsync(x => x.TokenHash == tokenHash);
+            .FirstOrDefaultAsync(x => x.TokenHash == tokenHash, cancellationToken: ct);
 
         if (rt == null)
         {

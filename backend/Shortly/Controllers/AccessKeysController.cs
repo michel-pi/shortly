@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
@@ -34,16 +35,19 @@ public class AccessKeysController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<AccessKeyResponse>>> List(
         [FromQuery] int? skip = null,
-        [FromQuery] int? take = null)
+        [FromQuery] int? take = null,
+        CancellationToken ct = default)
     {
-        var accessKeys = await _accessKeysService.ListAsync(CurrentUserId, skip, take);
+        var accessKeys = await _accessKeysService.ListAsync(CurrentUserId, skip, take, ct);
         return Ok(accessKeys.Select(ToAccessKeyResponse));
     }
 
     [HttpGet("{id:long}")]
-    public async Task<ActionResult<AccessKeyResponse>> Get(long id)
+    public async Task<ActionResult<AccessKeyResponse>> Get(
+        long id,
+        CancellationToken ct = default)
     {
-        var accessKey = await _accessKeysService.GetAsync(id);
+        var accessKey = await _accessKeysService.GetAsync(id, ct);
 
         if (accessKey == null)
         {
@@ -54,9 +58,11 @@ public class AccessKeysController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<AccessKeyResponse>> Create([FromBody] CreateAccessKeyRequest request)
+    public async Task<ActionResult<AccessKeyResponse>> Create(
+        [FromBody] CreateAccessKeyRequest request,
+        CancellationToken ct = default)
     {
-        var accessKey = await _accessKeysService.CreateAsync(CurrentUserId, request.Name, request.IsActive, request.ExpiresAt);
+        var accessKey = await _accessKeysService.CreateAsync(CurrentUserId, request.Name, request.IsActive, request.ExpiresAt, ct);
 
         return CreatedAtAction(nameof(Get), new { id = accessKey.Id }, ToAccessKeyResponse(accessKey));
     }
@@ -64,9 +70,10 @@ public class AccessKeysController : ControllerBase
     [HttpPut("{id:long}")]
     public async Task<ActionResult<AccessKeyResponse>> Update(
         long id,
-        [FromBody] UpdateAccessKeyRequest request)
+        [FromBody] UpdateAccessKeyRequest request,
+        CancellationToken ct = default)
     {
-        var ok = await _accessKeysService.UpdateAsync(id, request.Name, request.IsActive, request.ExpiresAt);
+        var ok = await _accessKeysService.UpdateAsync(id, request.Name, request.IsActive, request.ExpiresAt, ct);
 
         if (ok == null)
         {
@@ -77,9 +84,11 @@ public class AccessKeysController : ControllerBase
     }
 
     [HttpDelete("{id:long}")]
-    public async Task<IActionResult> Delete(long id)
+    public async Task<IActionResult> Delete(
+        long id,
+        CancellationToken ct = default)
     {
-        var ok = await _accessKeysService.DeleteAsync(id);
+        var ok = await _accessKeysService.DeleteAsync(id, ct);
         return ok ? NoContent() : NotFound();
     }
 

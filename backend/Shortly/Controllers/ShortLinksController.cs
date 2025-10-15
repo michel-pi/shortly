@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
@@ -34,16 +35,19 @@ public class ShortLinksController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ShortLinkResponse>>> List(
         [FromQuery] int? skip = null,
-        [FromQuery] int? take = null)
+        [FromQuery] int? take = null,
+        CancellationToken ct = default)
     {
-        var shortLink = await _shortLinksService.ListAsync(CurrentUserId, skip, take);
+        var shortLink = await _shortLinksService.ListAsync(CurrentUserId, skip, take, ct);
         return Ok(shortLink.Select(ToShortLinkResponse));
     }
 
     [HttpGet("{id:long}")]
-    public async Task<ActionResult<ShortLinkResponse>> Get(long id)
+    public async Task<ActionResult<ShortLinkResponse>> Get(
+        long id,
+        CancellationToken ct = default)
     {
-        var shortLink = await _shortLinksService.GetAsync(id);
+        var shortLink = await _shortLinksService.GetAsync(id, ct);
 
         if (shortLink == null)
         {
@@ -54,9 +58,16 @@ public class ShortLinksController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<ShortLinkResponse>> Create([FromBody] CreateShortLinkRequest request)
+    public async Task<ActionResult<ShortLinkResponse>> Create(
+        [FromBody] CreateShortLinkRequest request,
+        CancellationToken ct = default)
     {
-        var shortLink = await _shortLinksService.CreateAsync(CurrentUserId, request.TargetUrl, request.IsActive, request.ExpiresAt);
+        var shortLink = await _shortLinksService.CreateAsync(
+            CurrentUserId,
+            request.TargetUrl,
+            request.IsActive,
+            request.ExpiresAt,
+            ct);
 
         return CreatedAtAction(nameof(Get), new { id = shortLink.Id }, ToShortLinkResponse(shortLink));
     }
@@ -64,9 +75,10 @@ public class ShortLinksController : ControllerBase
     [HttpPut("{id:long}")]
     public async Task<ActionResult<ShortLinkResponse>> Update(
         long id,
-        [FromBody] UpdateShortLinkRequest request)
+        [FromBody] UpdateShortLinkRequest request,
+        CancellationToken ct = default)
     {
-        var ok = await _shortLinksService.UpdateAsync(id, request.IsActive, request.ExpiresAt);
+        var ok = await _shortLinksService.UpdateAsync(id, request.IsActive, request.ExpiresAt, ct);
 
         if (ok == null)
         {
@@ -77,9 +89,11 @@ public class ShortLinksController : ControllerBase
     }
 
     [HttpDelete("{id:long}")]
-    public async Task<IActionResult> Delete(long id)
+    public async Task<IActionResult> Delete(
+        long id,
+        CancellationToken ct = default)
     {
-        var ok = await _shortLinksService.DeleteAsync(id);
+        var ok = await _shortLinksService.DeleteAsync(id, ct);
         return ok ? NoContent() : NotFound();
     }
 

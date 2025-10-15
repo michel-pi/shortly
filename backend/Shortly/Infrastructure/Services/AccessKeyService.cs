@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +26,8 @@ public class AccessKeyService : IAccessKeysService
         long userId,
         string name,
         bool isActive,
-        DateTimeOffset? expiresAt = null)
+        DateTimeOffset? expiresAt = null,
+        CancellationToken ct = default)
     {
         var tokenHash = HashProvider.Sha256HexString(Guid.NewGuid().ToString());
 
@@ -40,7 +42,7 @@ public class AccessKeyService : IAccessKeysService
 
         _db.AccessKeys.Add(entity);
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
 
         return entity;
     }
@@ -48,7 +50,8 @@ public class AccessKeyService : IAccessKeysService
     public async Task<List<AccessKey>> ListAsync(
         long userId,
         int? skip,
-        int? take)
+        int? take,
+        CancellationToken ct = default)
     {
         var query = _db.AccessKeys
             .AsNoTracking()
@@ -57,7 +60,7 @@ public class AccessKeyService : IAccessKeysService
 
         if (skip == null && take == null)
         {
-            return await query.ToListAsync();
+            return await query.ToListAsync(cancellationToken: ct);
         }
 
         IQueryable<AccessKey> pagination = query;
@@ -71,21 +74,24 @@ public class AccessKeyService : IAccessKeysService
             pagination = pagination.Take(take.Value);
         }
 
-        return await pagination.ToListAsync();
+        return await pagination.ToListAsync(cancellationToken: ct);
     }
 
-    public async Task<AccessKey?> GetAsync(long id)
+    public async Task<AccessKey?> GetAsync(
+        long id,
+        CancellationToken ct = default)
     {
-        return await _db.AccessKeys.FirstOrDefaultAsync(x => x.Id == id);
+        return await _db.AccessKeys.FirstOrDefaultAsync(x => x.Id == id, cancellationToken: ct);
     }
 
     public async Task<AccessKey?> UpdateAsync(
         long id,
         string? name = null,
         bool? isActive = null,
-        DateTimeOffset? expiresAt = null)
+        DateTimeOffset? expiresAt = null,
+        CancellationToken ct = default)
     {
-        var entity = await _db.AccessKeys.FirstOrDefaultAsync(x =>x.Id == id);
+        var entity = await _db.AccessKeys.FirstOrDefaultAsync(x =>x.Id == id, cancellationToken: ct);
 
         if (entity == null)
         {
@@ -107,14 +113,16 @@ public class AccessKeyService : IAccessKeysService
             entity.ExpiresAt = expiresAt;
         }
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
 
         return entity;
     }
 
-    public async Task<bool> DeleteAsync(long id)
+    public async Task<bool> DeleteAsync(
+        long id,
+        CancellationToken ct = default)
     {
-        var entity = await _db.AccessKeys.FirstOrDefaultAsync(x => x.Id == id);
+        var entity = await _db.AccessKeys.FirstOrDefaultAsync(x => x.Id == id, cancellationToken: ct);
 
         if (entity == null)
         {
@@ -123,7 +131,7 @@ public class AccessKeyService : IAccessKeysService
 
         _db.AccessKeys.Remove(entity);
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
 
         return true;
     }

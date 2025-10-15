@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,8 @@ public class ShortLinksService : IShortLinksService
         long userId,
         string targetUrl,
         bool isActive,
-        DateTimeOffset? expiresAt = null)
+        DateTimeOffset? expiresAt = null,
+        CancellationToken ct = default)
     {
         if (!targetUrl.Contains("://"))
         {
@@ -53,7 +55,7 @@ public class ShortLinksService : IShortLinksService
                 shortLink.ShortCode = _shortCodeGenerator.Generate();
                 shortLink.Id = 0;
 
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(ct);
 
                 created = true;
             }
@@ -66,24 +68,29 @@ public class ShortLinksService : IShortLinksService
         return shortLink;
     }
 
-    public async Task<ShortLink?> GetAsync(long id)
+    public async Task<ShortLink?> GetAsync(
+        long id,
+        CancellationToken ct = default)
     {
         return await _db.ShortLinks
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id);
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken: ct);
     }
 
-    public async Task<ShortLink?> GetByShortCodeAsync(string shortCode)
+    public async Task<ShortLink?> GetByShortCodeAsync(
+        string shortCode,
+        CancellationToken ct = default)
     {
         return await _db.ShortLinks
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.ShortCode == shortCode);
+            .FirstOrDefaultAsync(x => x.ShortCode == shortCode, cancellationToken: ct);
     }
 
     public async Task<List<ShortLink>> ListAsync(
         long userId,
         int? skip,
-        int? take)
+        int? take,
+        CancellationToken ct = default)
     {
         var query = _db.ShortLinks
             .AsNoTracking()
@@ -92,7 +99,7 @@ public class ShortLinksService : IShortLinksService
 
         if (skip == null && take == null)
         {
-            return await query.ToListAsync();
+            return await query.ToListAsync(cancellationToken: ct);
         }
 
         IQueryable<ShortLink> pagination = query;
@@ -106,15 +113,16 @@ public class ShortLinksService : IShortLinksService
             pagination = pagination.Take(take.Value);
         }
 
-        return await pagination.ToListAsync();
+        return await pagination.ToListAsync(cancellationToken: ct);
     }
 
     public async Task<ShortLink?> UpdateAsync(
         long id,
         bool? isActive,
-        DateTimeOffset? expiresAt)
+        DateTimeOffset? expiresAt,
+        CancellationToken ct = default)
     {
-        var entity = await _db.ShortLinks.FirstOrDefaultAsync(x => x.Id == id);
+        var entity = await _db.ShortLinks.FirstOrDefaultAsync(x => x.Id == id, cancellationToken: ct);
 
         if (entity == null)
         {
@@ -131,14 +139,16 @@ public class ShortLinksService : IShortLinksService
             entity.ExpiresAt = expiresAt.Value;
         }
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
 
         return entity;
     }
 
-    public async Task<bool> DeleteAsync(long id)
+    public async Task<bool> DeleteAsync(
+        long id,
+        CancellationToken ct = default)
     {
-        var entity = await _db.ShortLinks.FirstOrDefaultAsync(x => x.Id == id);
+        var entity = await _db.ShortLinks.FirstOrDefaultAsync(x => x.Id == id, cancellationToken: ct);
 
         if (entity == null)
         {
@@ -147,7 +157,7 @@ public class ShortLinksService : IShortLinksService
 
         _db.ShortLinks.Remove(entity);
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
 
         return true;
     }

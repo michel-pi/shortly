@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
@@ -36,17 +37,20 @@ public class ShortLinkEngagementsController : ControllerBase
     public async Task<ActionResult<ShortLinkEngagementSummaryResponse>> Summary(
         [FromQuery] bool? includeInactive = null,
         [FromQuery] DateTimeOffset? from = null,
-        [FromQuery] DateTimeOffset? to = null)
+        [FromQuery] DateTimeOffset? to = null,
+        CancellationToken ct = default)
     {
-        var result = await _engagementService.GetSummaryAsync(CurrentUserId, includeInactive, from, to);
+        var result = await _engagementService.GetSummaryAsync(CurrentUserId, includeInactive, from, to, ct);
 
         return Ok(result);
     }
 
     [HttpGet("{id:long}")]
-    public async Task<ActionResult<ShortLinkEngagementResponse>> Get(long id)
+    public async Task<ActionResult<ShortLinkEngagementResponse>> Get(
+        long id,
+        CancellationToken ct = default)
     {
-        var result = await _engagementService.GetAsync(id);
+        var result = await _engagementService.GetAsync(id, ct);
 
         if (result == null)
         {
@@ -63,7 +67,8 @@ public class ShortLinkEngagementsController : ControllerBase
         [FromQuery] DateTimeOffset? to = null,
         [FromQuery] int? skip = null,
         [FromQuery] int? take = null,
-        [FromQuery] long? shortLinkId = null)
+        [FromQuery] long? shortLinkId = null,
+        CancellationToken ct = default)
     {
         var result = await _engagementService.ListAsync(
             CurrentUserId,
@@ -72,7 +77,8 @@ public class ShortLinkEngagementsController : ControllerBase
             to,
             skip,
             take,
-            shortLinkId);
+            shortLinkId,
+            ct);
 
         return Ok(result.Select(ToShortLinkEngagementResponse));
     }

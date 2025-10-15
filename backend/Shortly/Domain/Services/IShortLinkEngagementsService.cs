@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Shortly.Domain.Entities;
@@ -14,15 +15,19 @@ public interface IShortLinkEngagementsService
         string clientIp,
         string? userAgent,
         string? referer,
-        string? country);
+        string? country,
+        CancellationToken ct = default);
 
-    Task<ShortLinkEngagement?> GetAsync(long id);
+    Task<ShortLinkEngagement?> GetAsync(
+        long id,
+        CancellationToken ct = default);
 
     Task<ShortLinkEngagementSummaryResponse> GetSummaryAsync(
         long userId,
         bool? includeInactive,
         DateTimeOffset? from,
-        DateTimeOffset? to);
+        DateTimeOffset? to,
+        CancellationToken ct = default);
 
     Task<List<ShortLinkEngagement>> ListAsync(
         long userId,
@@ -31,5 +36,6 @@ public interface IShortLinkEngagementsService
         DateTimeOffset? to,
         int? skip,
         int? take,
-        long? shortLinkId);
+        long? shortLinkId,
+        CancellationToken ct = default);
 }

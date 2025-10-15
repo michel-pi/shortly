@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -33,9 +34,11 @@ public class RedirectController : ControllerBase
     }
 
     [HttpGet("{code}")]
-    public async Task<IActionResult> ResolveAndRedirect(string code)
+    public async Task<IActionResult> ResolveAndRedirect(
+        string code,
+        CancellationToken ct = default)
     {
-        var shortLink = await _shortLinksService.GetByShortCodeAsync(code);
+        var shortLink = await _shortLinksService.GetByShortCodeAsync(code, ct);
 
         if (shortLink == null)
         {
@@ -52,15 +55,18 @@ public class RedirectController : ControllerBase
             HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0",
             HttpContext.Request.Headers.UserAgent.ToString(),
             HttpContext.Request.Headers.Referer.ToString(),
-            _geolocationService.LookupCountry(HttpContext.Connection.RemoteIpAddress));
+            _geolocationService.LookupCountry(HttpContext.Connection.RemoteIpAddress),
+            ct);
 
         return Redirect(shortLink.TargetUrl);
     }
 
     [HttpHead("{code}")] // for preview in messenger
-    public async Task<IActionResult> Head(string code)
+    public async Task<IActionResult> Head(
+        string code,
+        CancellationToken ct = default)
     {
-        var shortLink = await _shortLinksService.GetByShortCodeAsync(code);
+        var shortLink = await _shortLinksService.GetByShortCodeAsync(code, ct);
 
         if (shortLink == null)
         {
@@ -78,9 +84,11 @@ public class RedirectController : ControllerBase
     }
 
     [HttpGet("{code}/target")]
-    public async Task<ActionResult<ResolveResponse>> ResolveTarget(string code)
+    public async Task<ActionResult<ResolveResponse>> ResolveTarget(
+        string code,
+        CancellationToken ct = default)
     {
-        var shortLink = await _shortLinksService.GetByShortCodeAsync(code);
+        var shortLink = await _shortLinksService.GetByShortCodeAsync(code, ct);
 
         if (shortLink == null)
         {
@@ -97,7 +105,8 @@ public class RedirectController : ControllerBase
             HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0",
             HttpContext.Request.Headers.UserAgent.ToString(),
             HttpContext.Request.Headers.Referer.ToString(),
-            _geolocationService.LookupCountry(HttpContext.Connection.RemoteIpAddress));
+            _geolocationService.LookupCountry(HttpContext.Connection.RemoteIpAddress),
+            ct);
 
         return Ok(new ResolveResponse
         {

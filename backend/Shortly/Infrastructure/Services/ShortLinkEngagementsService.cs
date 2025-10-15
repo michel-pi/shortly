@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.EntityFrameworkCore;
@@ -29,7 +30,8 @@ public class ShortLinkEngagementsService : IShortLinkEngagementsService
         string clientIp,
         string? userAgent,
         string? referer,
-        string? country)
+        string? country,
+        CancellationToken ct = default)
     {
         var entity = new ShortLinkEngagement
         {
@@ -42,49 +44,52 @@ public class ShortLinkEngagementsService : IShortLinkEngagementsService
 
         _db.ShortLinkEngagements.Add(entity);
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(ct);
 
         return entity;
     }
 
-    public async Task<ShortLinkEngagement?> GetAsync(long id)
+    public async Task<ShortLinkEngagement?> GetAsync(
+        long id,
+        CancellationToken ct = default)
     {
         return await _db.ShortLinkEngagements
             .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id);
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken: ct);
     }
 
     public async Task<ShortLinkEngagementSummaryResponse> GetSummaryAsync(
         long userId,
         bool? includeInactive,
         DateTimeOffset? from,
-        DateTimeOffset? to)
+        DateTimeOffset? to,
+        CancellationToken ct = default)
     {
         (from, to) = NormalzeRange(from, to);
         var incInactive = includeInactive == true;
 
         var query = GetQueryableRange(userId, includeInactive, from, to);
 
-        var totalClicks = await query.LongCountAsync();
+        var totalClicks = await query.LongCountAsync(cancellationToken: ct);
 
         var totalClients = await query
             .Select(x => x.ClientAddressHash)
             .Distinct()
-            .LongCountAsync();
+            .LongCountAsync(cancellationToken: ct);
 
         var countries = await query
             .Select(x => new { Key = (x.Country == null || x.Country == "") ? "?" : x.Country! })
             .GroupBy(x => x.Key)
             .Select(g => new { g.Key, Count = g.LongCount() })
             .OrderByDescending(x => x.Count)
-            .ToDictionaryAsync(x => x.Key, x => x.Count);
+            .ToDictionaryAsync(x => x.Key, x => x.Count, cancellationToken: ct);
 
         var referers = await query
             .Select(x => new { Key = (x.Referer == null || x.Referer == "") ? "?" : x.Referer! })
             .GroupBy(x => x.Key)
             .Select(g => new { g.Key, Count = g.LongCount() })
             .OrderByDescending(x => x.Count)
-            .ToDictionaryAsync(x => x.Key, x => x.Count);
+            .ToDictionaryAsync(x => x.Key, x => x.Count, cancellationToken: ct);
 
         return new ShortLinkEngagementSummaryResponse
         {
@@ -104,7 +109,8 @@ public class ShortLinkEngagementsService : IShortLinkEngagementsService
         DateTimeOffset? to,
         int? skip = null,
         int? take = null,
-        long? shortLinkId = null)
+        long? shortLinkId = null,
+        CancellationToken ct = default)
     {
         (from, to) = NormalzeRange(from, to);
 
@@ -125,7 +131,7 @@ public class ShortLinkEngagementsService : IShortLinkEngagementsService
             query = query.Take(take.Value);
         }
 
-        return await query.ToListAsync();
+        return await query.ToListAsync(cancellationToken: ct);
     }
 
     private IQueryable<ShortLinkEngagement> GetQueryableRange(
